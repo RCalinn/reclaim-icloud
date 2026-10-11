@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reclaim iCloud</title>
+  <link rel="stylesheet" href="review.css">
+</head>
+<body>
+  <!-- Thin-line icon sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M8 12h8"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.8L12 16.9l-5.25 2.7 1-5.8L3.5 9.7l5.9-.9z"/></symbol>
+  </svg>
+
+  <div class="page">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><span id="connDot" class="dot"></span><span id="conn">Checking connection…</span></span>
+        <h1>Reclaim your<br>iCloud space.</h1>
+        <p class="lede">Find bursts and retakes, keep the best shot, and send the rest to Recently Deleted.</p>
+      </div>
+
+      <div class="bento">
+        <div class="shell bento-hero"><div class="core">
+          <span class="label">Selected to free</span>
+          <span id="statFree" class="big">—</span>
+          <span id="statSel" class="sub">Run a scan to begin</span>
+        </div></div>
+        <div class="shell"><div class="core">
+          <span class="label">Similar groups</span>
+          <span id="statGroups" class="mid">—</span>
+          <button id="tuneOpen" class="pill ghost tune-open" disabled title="Label a few pairs to see how well each Similarity level matches you">Check accuracy</button>
+        </div></div>
+        <div class="shell"><div class="core">
+          <span class="label">Library</span>
+          <span id="statPhotos" class="small">—</span>
+          <span id="statVideos" class="small muted"></span>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- Floating control island -->
+    <div class="island-wrap">
+      <div class="island">
+        <label class="ctl">
+          <span class="ctl-label">Similarity <output id="distOut"></output></span>
+          <input id="dist" type="range" min="0" max="16" value="2">
+          <span class="ctl-ends"><span>Strict</span><span>Loose</span></span>
+        </label>
+        <span class="divider"></span>
+        <label class="ctl">
+          <span class="ctl-label">Time window <output id="winOut"></output></span>
+          <input id="win" type="range" min="0" max="7" value="4">
+          <span class="ctl-ends"><span>10s</span><span>1h</span></span>
+        </label>
+        <button id="scan" class="pill primary">
+          <span>Scan library</span>
+          <span class="nub"><svg><use href="#i-scan"/></svg></span>
+        </button>
+        <div id="progress" class="progress"><span></span></div>
+      </div>
+      <div id="status" class="status" aria-live="polite"></div>
+    </div>
+
+    <main id="groups"></main>
+  </div>
+
+  <!-- Floating delete bar -->
+  <div id="actionbar" class="actionbar">
+    <span id="summary"></span>
+    <button id="delete" class="pill danger">
+      <span>Move to Recently Deleted</span>
+      <span class="nub"><svg><use href="#i-trash"/></svg></span>
+    </button>
+  </div>
+
+  <!-- Preview / zoom -->
+  <div id="viewer" class="viewer" hidden>
+    <button id="vClose" class="vbtn vclose" title="Close (Space / Esc)"><svg><use href="#i-x"/></svg></button>
+    <button id="vPrev" class="vbtn vnav" title="Previous (←)"><svg><use href="#i-left"/></svg></button>
+    <div class="vstage">
+      <img id="vImg" alt="" title="Click to zoom">
+      <div id="vCompare" class="vcompare" hidden>
+        <img id="cB" alt="">
+        <img id="cA" alt="" class="ca">
+        <span class="chandle"><span></span></span>
+        <span id="cTagA" class="ctag a"></span>
+        <span id="cTagB" class="ctag b"></span>
+      </div>
+    </div>
+    <button id="vNext" class="vbtn vnav" title="Next (→)"><svg><use href="#i-right"/></svg></button>
+    <div class="vbottom">
+      <div id="vCap" class="vcap"></div>
+      <div class="vactions">
+        <button id="vToggle" class="pill"></button>
+        <button id="vOnly" class="pill ghost-dark" title="Keep this photo, delete the rest of its set (O)">Keep only this</button>
+        <button id="vCompareBtn" class="pill ghost-dark" title="Compare side by side (C)">Compare</button>
+        <span class="hint">← → browse · K keep · D delete · O keep only this · C compare · Space close</span>
+      </div>
+      <div id="vStrip" class="vstrip"></div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation sheet -->
+  <dialog id="confirm" class="sheet">
+    <div class="shell"><div class="core">
+      <span class="sheet-icon"><svg><use href="#i-trash"/></svg></span>
+      <h3 id="cTitle"></h3>
+      <p id="cBody"></p>
+      <p id="cWarn" class="warn"></p>
+      <form method="dialog" class="sheet-actions">
+        <button value="cancel" class="pill ghost">Cancel</button>
+        <button value="ok" class="pill danger"><span>Move to Recently Deleted</span></button>
+      </form>
+    </div></div>
+  </dialog>
+
+  <!-- Check accuracy: label pairs, see how each Similarity level does -->
+  <dialog id="tune" class="sheet tune" aria-labelledby="tTitle" tabindex="-1">
+    <div class="shell"><div class="core">
+      <div class="tune-head">
+        <h3 id="tTitle">Same shot?</h3>
+        <span id="tCount" class="tune-count"></span>
+        <button id="tClose" class="tune-close" aria-label="Close" title="Close (Esc)"><svg><use href="#i-x"/></svg></button>
+      </div>
+      <div id="tAsk">
+        <div class="tune-pair">
+          <figure><img id="tA" alt="First photo"><span class="tfail">Couldn’t load</span></figure>
+          <figure><img id="tB" alt="Second photo"><span class="tfail">Couldn’t load</span></figure>
+        </div>
+        <p id="tGap" class="tune-gap" aria-live="polite"></p>
+        <div class="tune-actions">
+          <button id="tUndo" class="pill ghost" title="Back to the previous pair (U)">Undo</button>
+          <span class="spacer"></span>
+          <button id="tDiff" class="pill ghost" title="D">Different</button>
+          <button id="tSkip" class="pill ghost" title="N">Not sure</button>
+          <button id="tSame" class="pill primary" title="S">Same shot</button>
+        </div>
+        <p class="tune-hint">S same shot · D different · N not sure · U undo · Esc close</p>
+      </div>
+      <div id="tResult" hidden>
+        <p id="tSuggest" class="tune-suggest"></p>
+        <div class="tune-scroll">
+          <table class="tune-table">
+            <thead><tr><th>Level</th><th>Same shots found</th><th>Different, wrongly grouped</th></tr></thead>
+            <tbody id="tRows"></tbody>
+          </table>
+        </div>
+        <div class="tune-actions">
+          <button id="tDownload" class="pill ghost" title="Signatures and answers only: no photos, names, dates or links">Download labels</button>
+          <span class="spacer"></span>
+          <button id="tMore" class="pill ghost">Label 40 more</button>
+          <button id="tUse" class="pill primary"></button>
+        </div>
+      </div>
+    </div></div>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

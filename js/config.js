@@ -1,0 +1,13 @@
+export const WINDOWS = [10, 30, 60, 120, 300, 600, 1800, 3600]; // seconds
+export const PAGE = 100;
+export const LIST_RETRY_DELAYS = [1000, 3000]; // ms between attempts when iCloud fails a listing page
+export const MAX_SKIPPED_IN_A_ROW = 3; // more single assets failing in a row than this: iCloud is down, give up
+export const SCAN_CONCURRENCY = { start: 8, min: 2, max: 24 }; // parallel thumbnail downloads while scanning; adapts
+export const IMG_CONCURRENCY = 8;
+export const IMG_TIMEOUT = 20000;
+export const CACHE_KEY = 'signatures-v3'; // bump when the signature format changes
+export const OLD_CACHE_KEYS = ['hashes', 'signatures-v2']; // removed on load
+export const CHOICES_KEY = 'choices-v1';  // Keep/Delete clicks, so a reload doesn't lose them
+export const LABELS_KEY = 'labels-v1';    // "same shot" / "different" answers from Check accuracy
+export const SETTINGS_KEY = 'settings-v1'; // slider positions
+export const ZONE = { zoneName: 'PrimarySync' };

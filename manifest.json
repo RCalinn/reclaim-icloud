@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "Reclaim iCloud",
+  "version": "0.2.0",
+  "description": "Find and remove similar photos in iCloud Photos.",
+  "browser_specific_settings": {
+    "gecko": { "id": "icloud-similar-photos@local", "strict_min_version": "115.0" }
+  },
+  "permissions": [
+    "webRequest",
+    "storage",
+    "unlimitedStorage",
+    "tabs",
+    "*://*.icloud.com/*",
+    "*://*.icloud-content.com/*"
+  ],
+  "background": { "scripts": ["background.js"] },
+  "content_scripts": [
+    { "matches": ["https://www.icloud.com/*"], "js": ["content.js"], "run_at": "document_start" }
+  ],
+  "browser_action": { "default_title": "Find similar photos" },
+  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+}
