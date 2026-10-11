@@ -11,9 +11,10 @@ It talks to iCloud through the iCloud Photos website you're signed in to, using 
 
 ## 1. Load the extension
 
-1. In Firefox, open `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on…** and pick `manifest.json` from this folder.
-3. A **Find similar photos** button appears in the toolbar.
+1. Download this project: on GitHub click **Code → Download ZIP**, then unzip it (or `git clone` it).
+2. In Firefox, open `about:debugging#/runtime/this-firefox`.
+3. Click **Load Temporary Add-on…** and pick `manifest.json` from the unzipped folder.
+4. A **Find similar photos** button appears in the toolbar.
 
 Firefox removes temporary add-ons when it quits, so repeat this each time you restart Firefox. After you change any file, click **Reload** on the same page.
 

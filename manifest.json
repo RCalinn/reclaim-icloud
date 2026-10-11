@@ -1,10 +1,14 @@
 {
   "manifest_version": 2,
   "name": "Reclaim iCloud",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "Find and remove similar photos in iCloud Photos.",
   "browser_specific_settings": {
-    "gecko": { "id": "icloud-similar-photos@local", "strict_min_version": "115.0" }
+    "gecko": {
+      "id": "icloud-similar-photos@local",
+      "strict_min_version": "115.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
   },
   "permissions": [
     "webRequest",

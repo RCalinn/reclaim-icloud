@@ -1,6 +1,6 @@
 // iCloud Photos (CloudKit web API), relayed by background.js through the logged-in icloud.com tab.
 
-import { LIST_RETRY_DELAYS, MAX_SKIPPED_IN_A_ROW, PAGE, ZONE } from './config.js';
+import { DELETE_RETRY_DELAYS, LIST_RETRY_DELAYS, MAX_SKIPPED_IN_A_ROW, PAGE, ZONE } from './config.js';
 import { sleep } from './util.js';
 
 const ck = (path, body) => browser.runtime.sendMessage({ type: 'ck', path, body });
@@ -211,15 +211,15 @@ function refreshUrls(p) {
   return refreshBatch.promise;
 }
 
-// Flags photos as deleted (iCloud moves them to Recently Deleted), 50 per request.
-// Returns { deleted: Set<id>, errors: string[] }; keeps going past per-photo failures.
-export async function moveToRecentlyDeleted(photos, onProgress) {
-  const deleted = new Set();
-  const errors = [];
-  try {
-    for (let i = 0; i < photos.length; i += 50) {
-      const chunk = photos.slice(i, i + 50);
-      const res = await ck('records/modify', {
+// A busy iCloud (503 SERVER_OVERLOADED) says how many seconds to wait in its retryAfter.
+const retryAfterMs = (e) => 1000 * +((e?.message || '').match(/"retryAfter"\s*:\s*(\d+)/)?.[1] || 0);
+
+// One batch of deletes. iCloud failing the whole request with a 5xx / 429 (often "overloaded, retry
+// in 10 s") is waited out and retried; onWait(seconds left) ticks once a second while waiting.
+async function modifyBatch(chunk, onWait) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await ck('records/modify', {
         operations: chunk.map((p) => ({
           operationType: 'update',
           record: {
@@ -232,14 +232,37 @@ export async function moveToRecentlyDeleted(photos, onProgress) {
         zoneID: ZONE,
         atomic: false,
       });
-      for (const r of res.records || []) {
-        if (r.serverErrorCode) errors.push(`${r.recordName}: ${r.serverErrorCode} ${r.reason || ''}`);
-        else deleted.add(r.recordName);
-      }
-      onProgress(deleted.size);
+    } catch (e) {
+      if (!isTransient(e) || attempt >= DELETE_RETRY_DELAYS.length) throw e;
+      const ms = Math.min(60000, Math.max(DELETE_RETRY_DELAYS[attempt], retryAfterMs(e)));
+      console.warn(`delete batch failed, retrying in ${ms / 1000} s`, e);
+      for (let left = Math.round(ms / 1000); left > 0; left--) { onWait(left); await sleep(1000); } // a live countdown
     }
-  } catch (e) {
-    errors.push(e.message || String(e));
   }
-  return { deleted, errors };
+}
+
+// Flags photos as deleted (iCloud moves them to Recently Deleted), 50 per request.
+// onProgress(moved, waitSeconds): waitSeconds is set while waiting to retry a batch iCloud was busy for.
+// Returns { deleted: Set<id>, errors: string[] (per-photo failures), notSent, busy }: if a batch still
+// fails after its retries, it and the rest aren't sent (notSent photos, still marked), and busy says
+// whether iCloud was overloaded rather than refusing outright.
+export async function moveToRecentlyDeleted(photos, onProgress) {
+  const deleted = new Set();
+  const errors = [];
+  for (let i = 0; i < photos.length; i += 50) {
+    const chunk = photos.slice(i, i + 50);
+    let res;
+    try {
+      res = await modifyBatch(chunk, (s) => onProgress(deleted.size, s));
+    } catch (e) {
+      console.warn('delete stopped', e);
+      return { deleted, errors, notSent: photos.length - i, busy: isTransient(e), stopError: e.message || String(e) };
+    }
+    for (const r of res.records || []) {
+      if (r.serverErrorCode) errors.push(`${r.recordName}: ${r.serverErrorCode} ${r.reason || ''}`);
+      else deleted.add(r.recordName);
+    }
+    onProgress(deleted.size);
+  }
+  return { deleted, errors, notSent: 0, busy: false };
 }

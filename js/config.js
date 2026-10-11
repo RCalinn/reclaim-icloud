@@ -1,6 +1,7 @@
 export const WINDOWS = [10, 30, 60, 120, 300, 600, 1800, 3600]; // seconds
 export const PAGE = 100;
 export const LIST_RETRY_DELAYS = [1000, 3000]; // ms between attempts when iCloud fails a listing page
+export const DELETE_RETRY_DELAYS = [5000, 15000, 30000]; // ms before re-sending a delete batch iCloud was too busy for (or its retryAfter, if longer)
 export const MAX_SKIPPED_IN_A_ROW = 3; // more single assets failing in a row than this: iCloud is down, give up
 export const SCAN_CONCURRENCY = { start: 8, min: 2, max: 24 }; // parallel thumbnail downloads while scanning; adapts
 export const IMG_CONCURRENCY = 8;

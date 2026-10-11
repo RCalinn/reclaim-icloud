@@ -113,16 +113,26 @@ async function deleteSelected(groups = state.groups, label = '') {
   state.busy = true;
   $('#scan').disabled = true;
   updateSummary();
-  const { deleted, errors } = await moveToRecentlyDeleted(sel, (n) => {
-    setStatus(`Moving to Recently Deleted… ${n} of ${sel.length}`);
+  const { deleted, errors, notSent, busy, stopError } = await moveToRecentlyDeleted(sel, (n, wait) => {
+    setStatus(wait
+      ? `iCloud is busy, trying again in ${wait} s… (${n} of ${sel.length} moved)`
+      : `Moving to Recently Deleted… ${n} of ${sel.length}`);
     setProgress(n / sel.length);
   });
 
   forgetDeleted(deleted);
   if (errors.length) console.warn('delete errors', errors);
+  if (stopError) console.warn('delete stopped early', stopError);
+  const plural = (k) => `${k.toLocaleString()} photo${k === 1 ? '' : 's'}`;
+  const were = (k) => (k === 1 ? 'wasn’t' : 'weren’t');
+  const notMoved = notSent && (busy
+    ? `iCloud is too busy, so ${plural(notSent)} ${were(notSent)} moved. Still marked: wait a minute, then press Move to Recently Deleted again.`
+    : `${plural(notSent)} ${were(notSent)} moved because iCloud returned an error. Still marked: press Move to Recently Deleted to try again.`);
+  const refused = errors.length && `iCloud refused ${plural(errors.length)}; scan again, then retry.`;
   setStatus(
-    `Moved ${deleted.size} photos to Recently Deleted.` + (errors.length ? ` ${errors.length} failed: ${errors[0]}` : ''),
-    errors.length > 0
+    [deleted.size || (!notSent && !refused) ? `Moved ${plural(deleted.size)} to Recently Deleted.` : '', notMoved, refused]
+      .filter(Boolean).join(' '),
+    notSent > 0 || errors.length > 0
   );
   state.busy = false;
   $('#scan').disabled = false;

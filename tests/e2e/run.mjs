@@ -178,12 +178,28 @@ try {
   check(sentBlock === +nBlock && (await delTitles()).length === totalMarked - +nBlock,
     `month delete sent ${sentBlock} of ${nBlock} from ${month}; ${totalMarked - +nBlock} still marked elsewhere`);
 
-  // ---- delete everything that's left
+  // ---- iCloud stays overloaded: the delete retries (5 + 15 + 30 s), then stops and says what to do
   const n = (await delTitles()).length;
   const sent1 = await sentOps();
-  await d.wait(async () => { try { await d.findElement(By.id('delete')).click(); return true; } catch { return false; } }, 5000);
-  await d.findElement(By.css('#confirm button[value=ok]')).click();
-  await waitStatus(/^Moved/);
+  const pressDelete = async () => {
+    await d.wait(async () => { try { await d.findElement(By.id('delete')).click(); return true; } catch { return false; } }, 5000);
+    await d.findElement(By.css('#confirm button[value=ok]')).click();
+  };
+  await js('window.__modifyFail = 99');
+  await pressDelete();
+  await waitStatus(/^iCloud is busy, trying again in 5 s/, 10000);
+  await waitStatus(/^iCloud is busy, trying again in 4 s/, 3000); // the countdown ticks
+  await waitStatus(/^iCloud is too busy/, 90000);
+  await js('window.__modifyFail = 0');
+  check((await sentOps()) === sent1 && (await delTitles()).length === n &&
+    (await status()) === `iCloud is too busy, so ${n} photos weren’t moved. Still marked: wait a minute, then press Move to Recently Deleted again.`,
+    `overloaded iCloud: nothing sent, ${(await delTitles()).length} of ${n} still marked, "${await status()}"`);
+
+  // ---- delete everything that's left; iCloud is busy once and the batch is retried
+  await js('window.__modifyFail = 1');
+  await pressDelete();
+  await waitStatus(/^iCloud is busy/, 10000);
+  await waitStatus(/^Moved/, 30000);
   const sent = (await sentOps()) - sent1;
   check(sent === n && (await status()).startsWith(`Moved ${n} photos`), `delete: ${sent} sent, "${await status()}"`);
   check((await delTitles()).length < n, 'deleted photos leave the view');

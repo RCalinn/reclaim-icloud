@@ -82,6 +82,11 @@
       }) };
     }
     if (path === 'records/modify') {
+      // __modifyFail = n: iCloud rejects the next n requests as overloaded, as it does under load.
+      if (window.__modifyFail > 0) {
+        window.__modifyFail--;
+        throw new Error('iCloud 503: { "retryAfter" : 1, "serverErrorCode" : "TRY_AGAIN_LATER", "error" : "SERVER_OVERLOADED" }');
+      }
       __modifyCalls.push(body);
       const out = body.operations.map((op) => {
         deleted.add(op.record.recordName);
